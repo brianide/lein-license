@@ -1,6 +1,6 @@
-(defproject lein-license "0.1.9-SNAPSHOT"
+(defproject org.clojars.brianide/lein-license "0.1.9-SNAPSHOT"
   :description "Project-Level License Management."
-  :url "https://github.com/xsc/lein-license"
+  :url "https://github.com/brianide/lein-license"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"
             :key "mit"
