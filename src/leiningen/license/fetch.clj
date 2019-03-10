@@ -1,24 +1,16 @@
 (ns leiningen.license.fetch
   (:require [leiningen.license.list :refer [match-licenses]]
             [leiningen.core.main :as main]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [clojure.set :refer [rename-keys]]
+            [cheshire.core :as json])
   (:import [org.yaml.snakeyaml Yaml]
            [org.yaml.snakeyaml.scanner ScannerException]))
 
 ;; ## URLs
 
 (def ^:dynamic *raw-prefix*
-  "https://raw.githubusercontent.com/github/choosealicense.com/gh-pages/_licenses/")
-
-(defn- raw-urls
-  "Generate URL to raw license data."
-  [license-key]
-  (let [s (-> (name license-key)
-              (string/replace #"\s+|_" "-")
-              (string/lower-case))]
-    (vector
-      (str *raw-prefix* s ".txt")
-      (str *raw-prefix* s ".html"))))
+  "https://api.github.com/licenses/")
 
 ;; ## Parser
 
@@ -80,18 +72,18 @@
 ;; ## License I/O
 
 (defn fetch-license!
-  "Fetch license data from the `github/choosealicense.com` repository."
+  "Fetch license data from the Github API."
   [license-key & [seen]]
   (if-not (contains? seen license-key)
-    (or (let [urls (raw-urls license-key)]
-          (main/debug "reading raw license data from:" urls)
-          (some-> (some
-                    #(try
-                       (slurp % :encoding "UTF-8")
-                       (catch java.io.FileNotFoundException _))
-                    urls)
-                  (parse-license license-key)))
-        (if-let [matches (seq (match-licenses (name license-key)))]
+    (or (try
+          (some-> (str *raw-prefix* license-key)
+                  (slurp :encoding "UTF-8")
+                  (json/parse-string keyword)
+                  (rename-keys {:name     :title
+                                :html_url :source
+                                :body     :text}))
+          (catch Exception _))
+        (if-let [matches (map second (match-licenses (name license-key)))]
           (if (next matches)
             {:error (str "No such License. Did you mean: "
                          (string/join ", " matches)
